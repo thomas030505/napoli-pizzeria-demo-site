@@ -1,26 +1,166 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Brand palette — Napoli Pizzeria */
+  --color-pane: #faf6ee;
+  --color-pomodoro: #b5341c;
+  --color-pomodoro-dark: #8d2614;
+  --color-forno: #1f2a2e;
+  --color-olivolio: #c9a961;
+  --color-olivolio-dark: #a88a45;
+  --color-basilico: #4f6b3a;
+  --color-paper: #fffdf8;
+  --color-stone-100: #f3ecdd;
+  --color-stone-200: #ece3d0;
+  --color-stone-300: #e7decb;
+  --color-stone-500: #8a7f72;
+  --color-stone-700: #6e635a;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-cormorant);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --animate-cart-bump: cart-bump 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-soft-pulse: soft-pulse 2s ease-in-out infinite;
+  --animate-ember: ember 4s ease-in-out infinite;
+
+  @keyframes cart-bump {
+    0%, 100% { transform: scale(1); }
+    30%      { transform: scale(1.10); }
+    60%      { transform: scale(0.97); }
+  }
+  @keyframes soft-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(181, 52, 28, 0.45); }
+    50%      { box-shadow: 0 0 0 8px rgba(181, 52, 28, 0); }
+  }
+  @keyframes ember {
+    0%, 100% { opacity: 0.85; filter: brightness(1); }
+    50%      { opacity: 1;    filter: brightness(1.15); }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+:root {
+  --background: #faf6ee;
+  --foreground: #1f2a2e;
+  --card: #fffdf8;
+  --card-foreground: #1f2a2e;
+  --popover: #fffdf8;
+  --popover-foreground: #1f2a2e;
+  --primary: #b5341c;
+  --primary-foreground: #faf6ee;
+  --secondary: #1f2a2e;
+  --secondary-foreground: #faf6ee;
+  --muted: #f3ecdd;
+  --muted-foreground: #6e635a;
+  --accent: #c9a961;
+  --accent-foreground: #1f2a2e;
+  --destructive: #8d2614;
+  --border: #e7decb;
+  --input: #e7decb;
+  --ring: #b5341c;
+  --radius: 0.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+    letter-spacing: -0.005em;
+    font-weight: 500;
+  }
+  ::selection {
+    background-color: #b5341c;
+    color: #faf6ee;
+  }
+}
+
+@layer utilities {
+  .container-page { @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8; }
+  .container-wide { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+  .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+  .pt-safe { padding-top: max(env(safe-area-inset-top), 0px); }
+  .bottom-safe { bottom: max(env(safe-area-inset-bottom), 1.25rem); }
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 600ms ease-out, transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+  .reveal.is-in-view { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+  .gold-rule {
+    background: linear-gradient(90deg, transparent, #c9a961 18%, #c9a961 82%, transparent);
+    height: 1px;
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--color-pomodoro);
+    font-weight: 500;
+  }
+  .eyebrow-muted {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--color-stone-700);
+    font-weight: 500;
+  }
+  .display-italic {
+    font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 500;
+  }
 }
