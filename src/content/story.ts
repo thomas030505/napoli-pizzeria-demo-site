@@ -6,7 +6,7 @@ export const STORY = {
   ovenTemp: "485°C",
   bakeTime: "90 sekunder",
   proof: "72 timer",
-  quote: "La pizza è semplice. Tre ingredienser, fyrti års tålmodighet.",
+  quote: "La pizza è semplice. Tre ingredienser, førti års tålmodighet.",
   quoteAuthor: "Antonio De Luca",
   paragraphs: [
     {
