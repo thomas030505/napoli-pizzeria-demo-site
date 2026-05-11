@@ -5,6 +5,7 @@ import { MapPin, Phone, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchMenu } from "@/lib/lettbestilt";
 import { formatOpeningHoursTable } from "@/lib/opening-hours";
+import { LOCATIONS, findLocationById } from "@/lib/locations";
 
 export const revalidate = 600;
 
@@ -14,24 +15,6 @@ export const metadata: Metadata = {
     "Tre avdelinger i Vestfold: Tønsberg sentrum, Teie torg på Nøtterøy, og Jernbanealléen i Sandefjord. Adresse, åpningstider og kart.",
   alternates: { canonical: "/lokasjoner" },
 };
-
-const VENUE = [
-  {
-    locationId: "loc-napoli-1",
-    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=80",
-    tagline: "Der det hele startet — flaggskipet i sentrum.",
-  },
-  {
-    locationId: "loc-napoli-2",
-    image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80",
-    tagline: "Familievennlig nabolagsbar på Teie.",
-  },
-  {
-    locationId: "loc-napoli-3",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
-    tagline: "Et steinkast fra jernbanestasjonen.",
-  },
-];
 
 export default async function LocationsPage() {
   const data = await fetchMenu({ revalidate: 600 });
@@ -55,7 +38,7 @@ export default async function LocationsPage() {
       <section className="bg-[color:var(--color-paper)] py-20 sm:py-28">
         <div className="container-wide space-y-24">
           {data.restaurant.locations.map((loc, i) => {
-            const meta = VENUE.find((v) => v.locationId === loc.id) ?? VENUE[i] ?? VENUE[0];
+            const meta = findLocationById(loc.id) ?? LOCATIONS[i] ?? LOCATIONS[0];
             const mapQuery = encodeURIComponent(`${loc.address}, ${loc.postalCode} ${loc.city}, Norge`);
             return (
               <article
@@ -115,7 +98,7 @@ export default async function LocationsPage() {
 
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Button asChild className="rounded-full px-6">
-                      <Link href="/bestill">Bestill herfra</Link>
+                      <Link href={`/bestill/${meta.slug}`}>Bestill herfra</Link>
                     </Button>
                     <Button asChild variant="outline" className="rounded-full px-6">
                       <a

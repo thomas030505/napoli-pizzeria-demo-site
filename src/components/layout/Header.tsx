@@ -8,18 +8,25 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
+import {
+  LOCATION_STORAGE_KEY,
+  findLocationBySlug,
+} from "@/lib/locations";
 
-const NAV = [
-  { href: "/meny", label: "Meny" },
-  { href: "/bestill", label: "Bestill" },
-  { href: "/om-oss", label: "Om oss" },
-  { href: "/lokasjoner", label: "Lokasjoner" },
-  { href: "/kontakt", label: "Kontakt" },
+type NavItem = { href: string; key: string; label: string };
+
+const NAV_BASE: NavItem[] = [
+  { key: "meny", href: "/meny", label: "Meny" },
+  { key: "bestill", href: "/bestill", label: "Bestill" },
+  { key: "om-oss", href: "/om-oss", label: "Om oss" },
+  { key: "lokasjoner", href: "/lokasjoner", label: "Lokasjoner" },
+  { key: "kontakt", href: "/kontakt", label: "Kontakt" },
 ];
 
 export function Header() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [rememberedSlug, setRememberedSlug] = useState<string | null>(null);
   const pathname = usePathname();
   const isHome = pathname === "/";
   // Transparent over dark hero only on home page until user scrolls
@@ -31,6 +38,23 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LOCATION_STORAGE_KEY);
+      if (stored && findLocationBySlug(stored)) setRememberedSlug(stored);
+    } catch {
+      // ignore
+    }
+  }, [pathname]);
+
+  const NAV: NavItem[] = NAV_BASE.map((item) => {
+    if (rememberedSlug && (item.key === "bestill" || item.key === "meny")) {
+      return { ...item, href: `/${item.key}/${rememberedSlug}` };
+    }
+    return item;
+  });
+  const bestillHref = rememberedSlug ? `/bestill/${rememberedSlug}` : "/bestill";
 
   return (
     <header
@@ -50,7 +74,7 @@ export function Header() {
         <nav className="hidden lg:flex items-center gap-8 text-[0.875rem] font-medium">
           {NAV.map((item) => (
             <Link
-              key={item.href}
+              key={item.key}
               href={item.href}
               className={cn(
                 "transition-colors relative group hover:text-[color:var(--color-pomodoro)]",
@@ -65,7 +89,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <Button asChild size="lg" className="hidden sm:inline-flex rounded-full px-6">
-            <Link href="/bestill">Bestill nå</Link>
+            <Link href={bestillHref}>Bestill nå</Link>
           </Button>
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -87,7 +111,7 @@ export function Header() {
                 </div>
                 {NAV.map((item) => (
                   <Link
-                    key={item.href}
+                    key={item.key}
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className="display-italic text-2xl py-3 border-b border-border/60 hover:text-[color:var(--color-pomodoro)] transition-colors"
@@ -96,7 +120,7 @@ export function Header() {
                   </Link>
                 ))}
                 <Button asChild size="lg" className="mt-6 rounded-full">
-                  <Link href="/bestill" onClick={() => setOpen(false)}>
+                  <Link href={bestillHref} onClick={() => setOpen(false)}>
                     Bestill nå
                   </Link>
                 </Button>
