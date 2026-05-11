@@ -488,7 +488,18 @@ export async function placeOrder(
     const err: ApiError = data?.error ?? { code: "INTERNAL_ERROR", message: "Bestilling feilet" };
     throw Object.assign(new Error(err.message), { code: err.code, details: err.details });
   }
-  return data;
+  if (
+    !data ||
+    typeof data !== "object" ||
+    typeof data.orderId !== "string" ||
+    typeof data.publicToken !== "string"
+  ) {
+    throw Object.assign(
+      new Error("Uventet svar fra bestillingstjenesten. Prøv igjen."),
+      { code: "INVALID_RESPONSE" as const }
+    );
+  }
+  return data as CreateOrderResponse;
 }
 
 export async function validateCoupon(input: {

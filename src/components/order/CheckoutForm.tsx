@@ -131,13 +131,19 @@ export function CheckoutForm({
         consentGivenAt: new Date().toISOString(),
       };
       const res = await placeOrder(payload, window.location.origin);
+      if (paymentMethod === "STRIPE") {
+        const stripeUrl = (res as { stripeUrl?: unknown }).stripeUrl;
+        if (typeof stripeUrl !== "string") {
+          throw new Error("Mangler Stripe-betalingslenke. Prøv igjen.");
+        }
+        clear();
+        onClose();
+        window.location.href = stripeUrl;
+        return;
+      }
       clear();
       onClose();
-      if ("stripeUrl" in res) {
-        window.location.href = res.stripeUrl;
-      } else {
-        window.location.href = `/order/${res.publicToken}`;
-      }
+      window.location.href = `/order/${res.publicToken}`;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Bestillingen feilet. Prøv igjen.";
