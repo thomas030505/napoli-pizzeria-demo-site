@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ByttAvdelingLink } from "@/components/order/ByttAvdeling";
 import { fetchMenu } from "@/lib/lettbestilt";
 import { getRestaurantStatus, isOrderingOpen } from "@/lib/opening-hours";
 import { OrderClient } from "@/components/order/OrderClient";
@@ -101,13 +100,7 @@ export default async function OrderPage({
                 </span>
               )
             )}
-            <Link
-              href="/bestill"
-              className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm text-muted-foreground hover:text-[color:var(--color-pomodoro)] transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Bytt avdeling
-            </Link>
+            <ByttAvdelingLink mode="bestill" />
           </div>
         </div>
       </section>
@@ -134,13 +127,7 @@ export default async function OrderPage({
             for å bestille — eller velg en annen avdeling.
           </p>
           <div className="mt-8">
-            <Link
-              href="/bestill"
-              className="inline-flex items-center gap-1 rounded-full px-5 py-3 text-sm font-medium text-[color:var(--color-pomodoro)] hover:underline"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Velg en annen avdeling
-            </Link>
+            <ByttAvdelingLink mode="bestill" />
           </div>
         </section>
       )}

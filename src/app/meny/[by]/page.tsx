@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ByttAvdelingLink } from "@/components/order/ByttAvdeling";
 import { fetchMenu, type Product } from "@/lib/lettbestilt";
 import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
@@ -64,13 +64,7 @@ export default async function MenuPage({
             vedovnen i 90 sekunder.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            <Link
-              href="/meny"
-              className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm text-muted-foreground hover:text-[color:var(--color-pomodoro)] transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Bytt avdeling
-            </Link>
+            <ByttAvdelingLink mode="meny" />
           </div>
           <div className="mt-8 flex flex-wrap gap-2">
             {categories.map((c) => (
