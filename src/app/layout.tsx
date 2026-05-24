@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { NewsletterPopupMount } from "@/components/layout/NewsletterPopupMount";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -59,6 +60,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Footer />
         <Toaster richColors position="top-center" />
+        <NewsletterPopupMount slug={process.env.NEXT_PUBLIC_SLUG ?? "napolipizzeria"} />
       </body>
     </html>
   );

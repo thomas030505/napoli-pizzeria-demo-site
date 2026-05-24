@@ -267,7 +267,34 @@ export type RestaurantLite = Pick<
   | "deliveryEnabled"
   | "defaultPrepMinutes"
   | "defaultDeliveryMinutes"
->;
+> & {
+  // Returneres KUN når popupen er aktivert i dashboardet og koblet til en aktiv
+  // kupong. Når null/missing: ikke render popupen — restauranten har slått den av.
+  newsletterPopup: NewsletterPopupConfig | null;
+};
+
+export type NewsletterPopupConfig = {
+  enabled: true;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  successMessage: string; // template med {{code}} og {{discount}}
+  requireName: boolean;
+  showAfterMs: number;
+  cookieDays: number;
+  coupon: {
+    code: string;
+    discountType: "PERCENT" | "FIXED" | "FREE_DELIVERY";
+    discountValue: number;
+  };
+};
+
+export type NewsletterSignupResponse = {
+  couponCode: string;
+  discountType: "PERCENT" | "FIXED" | "FREE_DELIVERY";
+  discountValue: number;
+  successMessage: string;
+};
 
 // ----- Order creation -----
 
@@ -281,6 +308,7 @@ export type CreateOrderInput = {
     notes?: string;
   }>;
   fulfillment: "PICKUP" | "DELIVERY";
+  orderType?: "TAKEAWAY" | "DINE_IN";
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -438,6 +466,29 @@ export async function fetchRestaurantLite(): Promise<RestaurantLite> {
   if (!res.ok) throw new Error(`Restaurant fetch failed: ${res.status}`);
   const data = await res.json();
   return data.restaurant;
+}
+
+/**
+ * Idempotent newsletter signup. Returnerer velkomstkoden popupen viser fram.
+ */
+export async function subscribeToNewsletter(input: {
+  email: string;
+  name?: string;
+  locationId?: string;
+}): Promise<NewsletterSignupResponse> {
+  const url = new URL(`${BASE_URL}/api/v1/newsletter/signup`);
+  url.searchParams.set("slug", SLUG);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const msg = data?.error?.message ?? `Påmelding feilet (${res.status})`;
+    throw new Error(msg);
+  }
+  return res.json();
 }
 
 export async function fetchOrder(token: string): Promise<OrderTracking> {
