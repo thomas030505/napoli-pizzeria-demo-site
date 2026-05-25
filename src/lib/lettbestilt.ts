@@ -354,6 +354,25 @@ export type CouponValidation =
         | "WRONG_LOCATION";
     };
 
+// ----- Auto-promo preview -----
+
+export type AutoPromoPreview =
+  | {
+      applies: true;
+      discount: number;
+      coupon: {
+        code: string;
+        description: string | null;
+        displayName: string | null;
+        discountType: "PERCENT" | "FIXED" | "FIXED_PRICE" | "FREE_DELIVERY";
+        appliesTo: "ORDER" | "CATEGORIES" | "PRODUCTS";
+      };
+    }
+  | {
+      applies: false;
+      discount: 0;
+    };
+
 // ----- Order tracking -----
 
 export type OrderStatus =
@@ -567,6 +586,35 @@ export async function validateCoupon(input: {
     const data = await res.json().catch(() => null);
     const err: ApiError = data?.error ?? { code: "INTERNAL_ERROR", message: "Validering feilet" };
     throw Object.assign(new Error(err.message), { code: err.code });
+  }
+  return res.json();
+}
+
+/**
+ * Forhåndsvis hvilket automatisk tilbud LettBestilt-serveren vil anvende på
+ * denne kurven (uten manuell kode). Server re-evaluerer ved order-create.
+ * Returnerer { applies: false, discount: 0 } hvis ingen auto-promo gjelder.
+ */
+export async function previewAutoCoupon(input: {
+  subtotal: number;
+  locationId?: string;
+  fulfillment?: "PICKUP" | "DELIVERY";
+  deliveryFee?: number;
+  cart: Array<{
+    productId: string;
+    quantity: number;
+    variantName?: string | null;
+    lineTotal: number;
+  }>;
+}): Promise<AutoPromoPreview> {
+  const res = await fetch(`/api/coupons/preview-auto`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug: SLUG, ...input }),
+  });
+  if (!res.ok) {
+    // Preview er ikke kritisk — fall stille tilbake til "ingen rabatt".
+    return { applies: false, discount: 0 };
   }
   return res.json();
 }
