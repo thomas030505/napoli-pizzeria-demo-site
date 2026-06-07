@@ -31,6 +31,7 @@ export function CartSheet({
   openingHours,
   hoursOverrides,
   prepMinutes,
+  payment,
 }: {
   upsell: UpsellConfig | null;
   orderingOpen: boolean;
@@ -39,6 +40,7 @@ export function CartSheet({
   openingHours: OpeningHour[];
   hoursOverrides: HoursOverride[];
   prepMinutes: number;
+  payment?: { card: boolean; vipps: boolean; cash: boolean };
 }) {
   const lines = useCart((s) => s.lines);
   const subtotal = useCart((s) => s.subtotal());
@@ -271,6 +273,7 @@ export function CartSheet({
             openingHours={openingHours}
             hoursOverrides={hoursOverrides}
             prepMinutes={prepMinutes}
+            payment={payment}
           />
         )}
       </SheetContent>

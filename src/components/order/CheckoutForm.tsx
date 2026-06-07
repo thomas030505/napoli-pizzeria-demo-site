@@ -37,6 +37,7 @@ export function CheckoutForm({
   openingHours,
   hoursOverrides,
   prepMinutes,
+  payment,
 }: {
   onBack: () => void;
   onClose: () => void;
@@ -44,6 +45,7 @@ export function CheckoutForm({
   openingHours: OpeningHour[];
   hoursOverrides: HoursOverride[];
   prepMinutes: number;
+  payment?: { card: boolean; vipps: boolean; cash: boolean };
 }) {
   const lines = useCart((s) => s.lines);
   const subtotal = useCart((s) => s.subtotal());
@@ -60,9 +62,33 @@ export function CheckoutForm({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [autoPromo, setAutoPromo] = useState<Extract<AutoPromoPreview, { applies: true }> | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "CASH">(
-    STRIPE_ENABLED ? "STRIPE" : "CASH"
+  // Resolver hvilke betalingsmetoder som er på basert på dashbordet (eller fall tilbake
+  // til Stripe + Cash som før hvis API ikke har returnert payment-feltet ennå).
+  const allowedPayment = useMemo(() => {
+    if (!payment) {
+      return { card: STRIPE_ENABLED, vipps: false, cash: true };
+    }
+    return payment;
+  }, [payment]);
+  const initialPaymentMethod: "STRIPE" | "VIPPS" | "CASH" = allowedPayment.card
+    ? "STRIPE"
+    : allowedPayment.vipps
+    ? "VIPPS"
+    : "CASH";
+  const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "CASH" | "VIPPS">(
+    initialPaymentMethod
   );
+  // Hvis flagget for valgt metode skrur seg av (f.eks. API-payload endres), auto-velg neste.
+  useEffect(() => {
+    if (paymentMethod === "STRIPE" && !allowedPayment.card) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPaymentMethod(allowedPayment.vipps ? "VIPPS" : "CASH");
+    } else if (paymentMethod === "VIPPS" && !allowedPayment.vipps) {
+      setPaymentMethod(allowedPayment.card ? "STRIPE" : "CASH");
+    } else if (paymentMethod === "CASH" && !allowedPayment.cash) {
+      setPaymentMethod(allowedPayment.card ? "STRIPE" : "VIPPS");
+    }
+  }, [allowedPayment, paymentMethod]);
   const [submitting, setSubmitting] = useState(false);
   const [consent, setConsent] = useState(false);
   const [locationId, setLocationId] = useState<string>(locations[0]?.id ?? "");
@@ -134,8 +160,7 @@ export function CheckoutForm({
     name.trim().length >= 1 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
     consent &&
-    lines.length > 0 &&
-    locationId.length > 0;
+    lines.length > 0;
 
   async function handleApplyCoupon() {
     if (!couponCode.trim()) return;
@@ -196,6 +221,16 @@ export function CheckoutForm({
         clear();
         onClose();
         window.location.href = stripeUrl;
+        return;
+      }
+      if (paymentMethod === "VIPPS") {
+        const vippsUrl = (res as { vippsUrl?: unknown }).vippsUrl;
+        if (typeof vippsUrl !== "string") {
+          throw new Error("Mangler Vipps-betalingslenke. Prøv igjen.");
+        }
+        clear();
+        onClose();
+        window.location.href = vippsUrl;
         return;
       }
       clear();
@@ -359,9 +394,18 @@ export function CheckoutForm({
               );
             })()
           ) : (
-            <p className="text-sm text-muted-foreground mb-3">
-              Vi tar bare henting akkurat nå.
-            </p>
+            <div className="mb-3 rounded-lg bg-secondary/8 border border-secondary/15 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">
+                {orderType === "DINE_IN" ? "Servering" : "Henting"}
+              </p>
+              <p className="text-sm font-medium text-foreground">Nedre Langgate 22</p>
+              <p className="text-xs text-muted-foreground mt-0.5">3126 Tønsberg</p>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {orderType === "DINE_IN"
+                  ? "Vi bringer maten til bordet."
+                  : "Maten står klar når du kommer."}
+              </p>
+            </div>
           )}
           {orderType === "TAKEAWAY" && (
           <div className="mb-3">
@@ -446,10 +490,10 @@ export function CheckoutForm({
           <h3 className="font-display text-lg mb-3">Betaling</h3>
           <RadioGroup
             value={paymentMethod}
-            onValueChange={(v) => setPaymentMethod(v as "STRIPE" | "CASH")}
+            onValueChange={(v) => setPaymentMethod(v as "STRIPE" | "CASH" | "VIPPS")}
             className="space-y-2"
           >
-            {STRIPE_ENABLED && (
+            {allowedPayment.card && (
               <Label
                 htmlFor="pay-stripe"
                 className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-secondary has-[:checked]:border-secondary has-[:checked]:bg-secondary/5"
@@ -463,18 +507,34 @@ export function CheckoutForm({
                 </div>
               </Label>
             )}
-            <Label
-              htmlFor="pay-cash"
-              className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-secondary has-[:checked]:border-secondary has-[:checked]:bg-secondary/5"
-            >
-              <RadioGroupItem id="pay-cash" value="CASH" />
-              <div className="flex-1">
-                <div className="font-medium">Betal ved henting</div>
-                <div className="text-xs text-muted-foreground">
-                  Kontant eller kort i restauranten.
+            {allowedPayment.vipps && (
+              <Label
+                htmlFor="pay-vipps"
+                className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-secondary has-[:checked]:border-secondary has-[:checked]:bg-secondary/5"
+              >
+                <RadioGroupItem id="pay-vipps" value="VIPPS" />
+                <div className="flex-1">
+                  <div className="font-medium">Vipps</div>
+                  <div className="text-xs text-muted-foreground">
+                    Betal med Vipps på mobil.
+                  </div>
                 </div>
-              </div>
-            </Label>
+              </Label>
+            )}
+            {allowedPayment.cash && (
+              <Label
+                htmlFor="pay-cash"
+                className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-secondary has-[:checked]:border-secondary has-[:checked]:bg-secondary/5"
+              >
+                <RadioGroupItem id="pay-cash" value="CASH" />
+                <div className="flex-1">
+                  <div className="font-medium">Betal ved henting</div>
+                  <div className="text-xs text-muted-foreground">
+                    Kontant eller kort i restauranten.
+                  </div>
+                </div>
+              </Label>
+            )}
           </RadioGroup>
         </div>
 
@@ -530,7 +590,7 @@ export function CheckoutForm({
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sender bestilling …
             </>
-          ) : paymentMethod === "STRIPE" ? (
+          ) : paymentMethod === "STRIPE" || paymentMethod === "VIPPS" ? (
             `Gå til betaling — ${formatMoney(total)}`
           ) : (
             `Bekreft bestilling — ${formatMoney(total)}`

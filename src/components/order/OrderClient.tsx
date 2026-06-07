@@ -103,6 +103,7 @@ export function OrderClient({
         openingHours={data.restaurant.openingHours}
         hoursOverrides={data.restaurant.hoursOverrides}
         prepMinutes={data.restaurant.defaultPrepMinutes}
+        payment={data.restaurant.payment}
       />
     </>
   );
