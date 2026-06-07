@@ -182,6 +182,10 @@ export type Restaurant = {
   deliveryZones: DeliveryZone[];
   // Restaurant-wide addon groups
   addonGroups: AddonGroup[];
+  // Hvilke betalingsmåter eieren har slått på i dashbordet. Minst én er alltid true.
+  // Optional fordi feltet ble lagt til etter at API-en kom på live; eldre snapshots
+  // mangler det og klienten må fall tilbake til Stripe + Cash som før.
+  payment?: { card: boolean; vipps: boolean; cash: boolean };
 };
 
 export type Coupon = {
@@ -319,14 +323,15 @@ export type CreateOrderInput = {
   pickupNotes?: string;
   requestedPickupAt?: string;
   couponCode?: string;
-  paymentMethod: "STRIPE" | "CASH";
+  paymentMethod: "STRIPE" | "CASH" | "VIPPS";
   locale?: "nb" | "en";
   consentGivenAt?: string;
 };
 
 export type CreateOrderResponse =
   | { orderId: string; publicToken: string }
-  | { orderId: string; publicToken: string; stripeUrl: string };
+  | { orderId: string; publicToken: string; stripeUrl: string }
+  | { orderId: string; publicToken: string; vippsUrl: string };
 
 // ----- Coupon validation -----
 
@@ -475,7 +480,13 @@ export async function fetchMenu(
       : { next: { revalidate: opts.revalidate ?? 60 } };
   const res = await fetch(`${BASE_URL}/api/v1/menu?slug=${SLUG}`, fetchOpts);
   if (!res.ok) throw new Error(`Menu fetch failed: ${res.status}`);
-  return res.json();
+  const data = (await res.json()) as MenuResponse;
+  // LettBestilt har fjernet restaurant.locations fra payload — normaliser til []
+  // så SSR ikke krasjer på .find()/[0]. Samme defensive mønster som milano-bardufoss.
+  if (data.restaurant && !Array.isArray(data.restaurant.locations)) {
+    data.restaurant.locations = [];
+  }
+  return data;
 }
 
 export async function fetchRestaurantLite(): Promise<RestaurantLite> {
