@@ -14,7 +14,7 @@
  *   (b) a Bearer API key in the Authorization header.
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_LETTBESTILT_URL ?? "https://lettbestilt.no";
+const BASE_URL = process.env.NEXT_PUBLIC_LETTBESTILT_URL ?? "https://www.lettbestilt.no";
 const SLUG = process.env.NEXT_PUBLIC_SLUG!;
 
 // ============================================================================
@@ -471,13 +471,25 @@ export type ApiError = {
 // Read endpoints (no auth)
 // ============================================================================
 
+/**
+ * Authorization-header for LESE-kall (/menu, /restaurant). LETTBESTILT_API_KEY
+ * er bevisst ikke NEXT_PUBLIC_, så nøkkelen finnes kun på server; window-guarden
+ * gjør det eksplisitt at den aldri skal havne i klient-bundelen. Mangler den,
+ * sendes ingen header og LettBestilt faller tilbake på origin-allowlisten.
+ */
+function readAuthHeaders(): Record<string, string> {
+  if (typeof window !== "undefined") return {};
+  const apiKey = process.env.LETTBESTILT_API_KEY;
+  return apiKey ? { Authorization: `Bearer ${apiKey.trim()}` } : {};
+}
+
 export async function fetchMenu(
   opts: { cache?: RequestCache; revalidate?: number } = {}
 ): Promise<MenuResponse> {
   const fetchOpts: RequestInit =
     opts.cache === "no-store"
-      ? { cache: "no-store" }
-      : { next: { revalidate: opts.revalidate ?? 60 } };
+      ? { cache: "no-store", headers: readAuthHeaders() }
+      : { next: { revalidate: opts.revalidate ?? 60 }, headers: readAuthHeaders() };
   const res = await fetch(`${BASE_URL}/api/v1/menu?slug=${SLUG}`, fetchOpts);
   if (!res.ok) throw new Error(`Menu fetch failed: ${res.status}`);
   const data = (await res.json()) as MenuResponse;
@@ -492,6 +504,7 @@ export async function fetchMenu(
 export async function fetchRestaurantLite(): Promise<RestaurantLite> {
   const res = await fetch(`${BASE_URL}/api/v1/restaurant?slug=${SLUG}`, {
     next: { revalidate: 300 },
+    headers: readAuthHeaders(),
   });
   if (!res.ok) throw new Error(`Restaurant fetch failed: ${res.status}`);
   const data = await res.json();
