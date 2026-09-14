@@ -24,6 +24,7 @@ import {
   type HoursOverride,
   type Location,
   type OpeningHour,
+  type PrepTime,
 } from "@/lib/lettbestilt";
 import { getPickupTimeSlots } from "@/lib/opening-hours";
 import { toast } from "sonner";
@@ -36,7 +37,7 @@ export function CheckoutForm({
   locations,
   openingHours,
   hoursOverrides,
-  prepMinutes,
+  prepTime,
   payment,
 }: {
   onBack: () => void;
@@ -44,7 +45,8 @@ export function CheckoutForm({
   locations: Location[];
   openingHours: OpeningHour[];
   hoursOverrides: HoursOverride[];
-  prepMinutes: number;
+  /** Fersk ventetid inkl. rush. */
+  prepTime: PrepTime;
   payment?: { card: boolean; vipps: boolean; cash: boolean };
 }) {
   const lines = useCart((s) => s.lines);
@@ -94,16 +96,20 @@ export function CheckoutForm({
   const [locationId, setLocationId] = useState<string>(locations[0]?.id ?? "");
   const [pickupTime, setPickupTime] = useState<string>("ASAP");
 
+  // Hentetider bruker GRUNNTIDEN: en valgt hentetid skal ikke forskyves av at
+  // det er travelt akkurat nå. «Så fort som mulig» bruker derimot tiden INKL.
+  // rush — det er nøyaktig det LettBestilt setter som `estimatedReadyAt`.
   const pickupSlots = useMemo(
-    () => getPickupTimeSlots(openingHours, hoursOverrides, prepMinutes),
-    [openingHours, hoursOverrides, prepMinutes]
+    () => getPickupTimeSlots(openingHours, hoursOverrides, prepTime.basePickupMinutes),
+    [openingHours, hoursOverrides, prepTime.basePickupMinutes]
   );
 
   const pickupLabel = useMemo(() => {
-    if (pickupTime === "ASAP") return `Så fort som mulig (ca. ${prepMinutes} min)`;
+    const asap = `Så fort som mulig (ca. ${prepTime.pickupMinutes} min)`;
+    if (pickupTime === "ASAP") return asap;
     const slot = pickupSlots.find((s) => s.value === pickupTime);
-    return slot ? `Kl. ${slot.label}` : `Så fort som mulig (ca. ${prepMinutes} min)`;
-  }, [pickupTime, pickupSlots, prepMinutes]);
+    return slot ? `Kl. ${slot.label}` : asap;
+  }, [pickupTime, pickupSlots, prepTime.pickupMinutes]);
 
   // Stabil fingeravtrykk for kurven så effekten kun trigger ved reelle endringer.
   const cartFingerprint = useMemo(
@@ -424,7 +430,7 @@ export function CheckoutForm({
               </SelectTrigger>
               <SelectContent className="max-h-72">
                 <SelectItem value="ASAP">
-                  Så fort som mulig (ca. {prepMinutes} min)
+                  Så fort som mulig (ca. {prepTime.pickupMinutes} min)
                 </SelectItem>
                 {pickupSlots.map((slot) => (
                   <SelectItem key={slot.value} value={slot.value}>

@@ -5,6 +5,7 @@ import type { MenuResponse } from "@/lib/lettbestilt";
 import { ProductCard } from "./ProductCard";
 import { CartSheet } from "./CartSheet";
 import { AllergenLegend } from "./AllergenLegend";
+import { usePrepTime } from "./usePrepTime";
 
 export function OrderClient({
   data,
@@ -15,6 +16,9 @@ export function OrderClient({
   orderingOpen: boolean;
   closedReason: string | null;
 }) {
+  // Fersk ventetid ved sidelast. Kassen ligger i CartSheet på samme side, så
+  // verdien er allerede oppdatert når kunden åpner den.
+  const prepTime = usePrepTime(data.restaurant.prepTime);
   const sortedCategories = useMemo(
     () => [...data.categories].sort((a, b) => a.sortOrder - b.sortOrder),
     [data.categories]
@@ -102,7 +106,7 @@ export function OrderClient({
         locations={data.restaurant.locations}
         openingHours={data.restaurant.openingHours}
         hoursOverrides={data.restaurant.hoursOverrides}
-        prepMinutes={data.restaurant.defaultPrepMinutes}
+        prepTime={prepTime}
         payment={data.restaurant.payment}
       />
     </>

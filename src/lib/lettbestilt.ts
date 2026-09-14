@@ -208,6 +208,16 @@ export type Restaurant = {
   deliveryEnabled: boolean;
   defaultPrepMinutes: number;
   defaultDeliveryMinutes: number;
+  /**
+   * Tilberedningstid inkludert rush — det som skal vises som «ca. X min».
+   *
+   * Garantert satt av `fetchMenu`/`fetchRestaurantLite`: `/menu` og
+   * `/restaurant` er CDN-cachet, så rett etter en plattform-deploy kan et svar
+   * fra før feltet fantes fortsatt ligge i kanten. Da syntetiserer vi det fra
+   * grunntidene (rush = 0), slik at visningskoden aldri trenger å kjenne til
+   * `defaultPrepMinutes`. Se `normalizePrepTime`.
+   */
+  prepTime: PrepTime;
   // Tracking
   trackingHeaderText: string | null;
   trackingPickupInstructions: string | null;
@@ -320,6 +330,7 @@ export type RestaurantLite = Pick<
   | "deliveryEnabled"
   | "defaultPrepMinutes"
   | "defaultDeliveryMinutes"
+  | "prepTime"
 > & {
   // Returneres KUN når popupen er aktivert i dashboardet og koblet til en aktiv
   // kupong. Når null/missing: ikke render popupen — restauranten har slått den av.
@@ -554,7 +565,74 @@ export async function fetchMenu(
     const synthesized = locationFromAddress(data.restaurant.address, data.restaurant);
     data.restaurant.locations = synthesized ? [synthesized] : [];
   }
+  if (data.restaurant) normalizePrepTime(data.restaurant);
   return data;
+}
+
+/**
+ * Gjeldende tilberedningstid — grunntid + rush, ferdig summert av plattformen.
+ *
+ * `pickupMinutes`/`deliveryMinutes` er det kunden skal se som «ca. X min», og
+ * nøyaktig det LettBestilt setter som `estimatedReadyAt` på en ASAP-ordre.
+ * Regn aldri selv: vis tallene som de er.
+ *
+ * `basePickupMinutes`/`baseDeliveryMinutes` er grunntiden UTEN rush. De brukes
+ * til hentetidene for forhåndsbestilling, som rush ikke skal påvirke — velger
+ * kunden «kl 18:30», skal det være 18:30 uansett hvor travelt det er nå.
+ * `rushDelayMinutes > 0` betyr at kjøkkenet har skrudd på rush; det slår seg av
+ * selv ved neste midnatt (Oslo).
+ */
+export type PrepTime = {
+  pickupMinutes: number;
+  deliveryMinutes: number;
+  rushDelayMinutes: number;
+  basePickupMinutes: number;
+  baseDeliveryMinutes: number;
+};
+
+/**
+ * Sørg for at `restaurant.prepTime` alltid finnes.
+ *
+ * `/menu` og `/restaurant` er CDN-cachet, så et svar fra før rush-deployen kan
+ * fortsatt serveres en liten stund. Grunntidene ER per definisjon
+ * `basePickupMinutes`/`baseDeliveryMinutes` (se plattformens PrepTime-skjema),
+ * så syntesen er verdibevarende — den antar bare at det ikke er rush, hvilket
+ * er den eneste trygge antakelsen når vi ikke har fått vite noe annet.
+ */
+function normalizePrepTime(
+  restaurant: Pick<Restaurant, "prepTime" | "defaultPrepMinutes" | "defaultDeliveryMinutes">,
+): void {
+  if (restaurant.prepTime && typeof restaurant.prepTime.pickupMinutes === "number") return;
+  restaurant.prepTime = {
+    pickupMinutes: restaurant.defaultPrepMinutes,
+    deliveryMinutes: restaurant.defaultDeliveryMinutes,
+    rushDelayMinutes: 0,
+    basePickupMinutes: restaurant.defaultPrepMinutes,
+    baseDeliveryMinutes: restaurant.defaultDeliveryMinutes,
+  };
+}
+
+/**
+ * Hent fersk tilberedningstid fra `/api/v1/prep-time` (`no-store`).
+ *
+ * Kun server: kalles fra vår egen `/api/prep-time`-rute, slik at
+ * `LETTBESTILT_API_KEY` aldri havner i klient-bundelen. Grunnen til at dette er
+ * et eget endepunkt og ikke bare `restaurant.prepTime`, er at `/menu` og
+ * `/restaurant` er CDN-cachet i 5–11 minutter — og rush er nettopp tilstanden
+ * der den forsinkelsen koster kunden en feil ventetid.
+ */
+export async function fetchPrepTimeServer(): Promise<PrepTime> {
+  const res = await fetch(`${BASE_URL}/api/v1/prep-time?slug=${SLUG}`, {
+    cache: "no-store",
+    headers: readAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`Prep-time fetch failed: ${res.status}`);
+  const data = await res.json();
+  const prepTime = data?.prepTime;
+  if (!prepTime || typeof prepTime.pickupMinutes !== "number") {
+    throw new Error("Prep-time-svaret manglet prepTime");
+  }
+  return prepTime as PrepTime;
 }
 
 export async function fetchRestaurantLite(): Promise<RestaurantLite> {
@@ -564,6 +642,7 @@ export async function fetchRestaurantLite(): Promise<RestaurantLite> {
   });
   if (!res.ok) throw new Error(`Restaurant fetch failed: ${res.status}`);
   const data = await res.json();
+  if (data?.restaurant) normalizePrepTime(data.restaurant);
   return data.restaurant;
 }
 
