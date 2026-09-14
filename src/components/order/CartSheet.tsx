@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/money";
 import { useCart } from "@/store/cart";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CheckoutForm } from "./CheckoutForm";
-import type { HoursOverride, Location, OpeningHour, UpsellConfig } from "@/lib/lettbestilt";
+import type { HoursOverride, Location, OpeningHour, PrepTime, UpsellConfig } from "@/lib/lettbestilt";
 
 function useHasMounted(): boolean {
   return useSyncExternalStore(
@@ -30,7 +30,7 @@ export function CartSheet({
   locations,
   openingHours,
   hoursOverrides,
-  prepMinutes,
+  prepTime,
   payment,
 }: {
   upsell: UpsellConfig | null;
@@ -39,7 +39,8 @@ export function CartSheet({
   locations: Location[];
   openingHours: OpeningHour[];
   hoursOverrides: HoursOverride[];
-  prepMinutes: number;
+  /** Fersk ventetid inkl. rush, hentet av OrderClient. */
+  prepTime: PrepTime;
   payment?: { card: boolean; vipps: boolean; cash: boolean };
 }) {
   const lines = useCart((s) => s.lines);
@@ -255,6 +256,14 @@ export function CartSheet({
                   {closedReason}
                 </p>
               )}
+              {/* Rush bruker samme driftsmelding-slot som closedReason — ikke
+                  ny UI. Kun mens bestilling er åpen: en forhåndsbestilt
+                  hentetid påvirkes ikke av rush. */}
+              {orderingOpen && prepTime.rushDelayMinutes > 0 && (
+                <p className="text-xs text-center text-muted-foreground bg-background rounded-md p-2">
+                  Litt ekstra ventetid akkurat nå
+                </p>
+              )}
               <Button
                 size="lg"
                 className="w-full motion-safe:active:scale-[0.98] motion-safe:transition-transform"
@@ -272,7 +281,7 @@ export function CartSheet({
             locations={locations}
             openingHours={openingHours}
             hoursOverrides={hoursOverrides}
-            prepMinutes={prepMinutes}
+            prepTime={prepTime}
             payment={payment}
           />
         )}
